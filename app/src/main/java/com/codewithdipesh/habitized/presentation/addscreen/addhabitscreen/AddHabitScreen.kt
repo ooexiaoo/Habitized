@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -103,6 +105,8 @@ fun AddHabitScreen(
     val context = LocalContext.current
 
     var isShowingGoals by remember { mutableStateOf(false) }
+    var showTypeChangeDialog by remember { mutableStateOf(false) }
+    var pendingType by remember { mutableStateOf<HabitType?>(null) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -376,8 +380,13 @@ fun AddHabitScreen(
                         Selector(
                             options = HabitType.getHabitTypes().map { it },
                             selectedOption = state.type,
-                            onOptionSelected = {
-                                viewmodel.setType(it)
+                            onOptionSelected = { newType ->
+                                if (state.isEditMode && newType != state.type) {
+                                    pendingType = newType
+                                    showTypeChangeDialog = true
+                                } else {
+                                    viewmodel.setType(newType)
+                                }
                             },
                             showBadge = true,
                             badgeText = "Deep Focus",
@@ -385,8 +394,7 @@ fun AddHabitScreen(
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                             selectedTextColor = MaterialTheme.colorScheme.onPrimary,
                             selectedOptionColor = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !state.isEditMode
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         //input of targets
@@ -696,6 +704,76 @@ fun AddHabitScreen(
         }
     }
 
+    if (showTypeChangeDialog && pendingType != null) {
+        TypeChangeConfirmationDialog(
+            onDismiss = { showTypeChangeDialog = false },
+            onConfirm = {
+                viewmodel.setType(pendingType!!)
+                showTypeChangeDialog = false
+            }
+        )
+    }
+
+}
+
+@Composable
+private fun TypeChangeConfirmationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                text = "Change Habit Type",
+                style = TextStyle(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontFamily = regular,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            )
+        },
+        text = {
+            Text(
+                text = "Changing the habit type may affect your existing progress data. Do you want to continue?",
+                style = TextStyle(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontFamily = regular,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 14.sp
+                ),
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    "Cancel",
+                    style = TextStyle(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontFamily = regular,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp
+                    )
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onConfirm(); onDismiss() }) {
+                Text(
+                    "Change",
+                    color = colorResource(R.color.delete_red),
+                    style = TextStyle(
+                        fontFamily = regular,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                )
+            }
+        }
+    )
 }
 
 

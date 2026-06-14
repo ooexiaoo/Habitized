@@ -200,6 +200,31 @@ class HabitRepoImpl(
         habitProgressDao.deleteProgressForHabit(habitId)
     }
 
+    override suspend fun logHabitForDate(habitId: UUID, date: LocalDate) {
+        val habit = habitDao.getHabitById(habitId) ?: return
+        val existing = habitProgressDao.getHabitProgressOfTheDay(habitId, date)
+        if (existing != null) {
+            habitProgressDao.onUpdateStatus(Status.Done.toString(), existing.progressId)
+        } else {
+            habitProgressDao.insertProgress(
+                HabitProgressEntity(
+                    habitId = habitId,
+                    date = date,
+                    type = habit.type,
+                    countParam = habit.countParam,
+                    currentCount = habit.countTarget,
+                    targetCount = habit.countTarget,
+                    targetDurationValue = habit.duration,
+                    currentSessionNumber = if(habit.type == HabitType.Session.toString()) habit.countTarget else null,
+                    targetSessionNumber = if(habit.type == HabitType.Session.toString()) habit.countTarget else null,
+                    status = Status.Done.toString(),
+                    notes = null,
+                    excuse = null
+                )
+            )
+        }
+    }
+
     override suspend fun checkHabitDoneOrNot(
         habitId: UUID,
         date: LocalDate

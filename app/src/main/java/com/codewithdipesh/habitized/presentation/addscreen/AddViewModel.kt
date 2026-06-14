@@ -179,7 +179,17 @@ class AddViewModel @Inject constructor(
             type = type,
             paramOptions = CountParam.getParams(type),
             countParam = if(type == HabitType.OneTime) null
-            else CountParam.getParams(type).first()
+            else CountParam.getParams(type).first(),
+            countTarget = when(type) {
+                HabitType.OneTime, HabitType.Duration -> null
+                else -> _habitUiState.value.countTarget
+            },
+            selectedHour = if (type == HabitType.OneTime || type == HabitType.Count) 0
+                           else _habitUiState.value.selectedHour,
+            selectedMinute = if (type == HabitType.OneTime || type == HabitType.Count) 0
+                             else _habitUiState.value.selectedMinute,
+            selectedSeconds = if (type == HabitType.OneTime || type == HabitType.Count) 0
+                              else _habitUiState.value.selectedSeconds
         )
     }
 

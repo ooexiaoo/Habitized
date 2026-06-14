@@ -175,6 +175,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun onLogHabitForDate(habitWithProgress: HabitWithProgress, date: LocalDate) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repo.logHabitForDate(habitWithProgress.habit.habit_id!!, date)
+            updateStreak(habitWithProgress)
+            loadHomePage(_uiState.value.selectedDate)
+        }
+    }
+
     fun onUpdateCounter(count : Int, habitWithProgress : HabitWithProgress){
         //local ui
         val ifDone = count >= (habitWithProgress.progress.targetCount ?: 0)

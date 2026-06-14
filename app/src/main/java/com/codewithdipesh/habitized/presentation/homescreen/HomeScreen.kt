@@ -64,6 +64,7 @@ import com.codewithdipesh.habitized.presentation.homescreen.component.DatePicker
 import com.codewithdipesh.habitized.presentation.homescreen.component.HabitCard
 import com.codewithdipesh.habitized.presentation.homescreen.component.OptionSelector
 import com.codewithdipesh.habitized.presentation.homescreen.component.RunningTimer
+import com.codewithdipesh.habitized.presentation.homescreen.component.LogForDateDialog
 import com.codewithdipesh.habitized.presentation.homescreen.component.SkipAlertDialog
 import com.codewithdipesh.habitized.presentation.homescreen.component.TodoEditor
 import com.codewithdipesh.habitized.presentation.navigation.Screen
@@ -101,6 +102,9 @@ fun HomeScreen(
 
     var showingSkipAlert by remember { mutableStateOf(false) }
     var habitForShowingAlert by remember { mutableStateOf<HabitWithProgress?>(null) }
+
+    var showingLogForDateDialog by remember { mutableStateOf(false) }
+    var habitForLogForDate by remember { mutableStateOf<HabitWithProgress?>(null) }
 
     var hideJob by remember { mutableStateOf<Job?>(null) }
 
@@ -246,6 +250,27 @@ fun HomeScreen(
             )
         }
 
+        //log for another day
+        if(showingLogForDateDialog && habitForLogForDate != null){
+            LogForDateDialog(
+                habitTitle = habitForLogForDate!!.habit.title,
+                onDismiss = {
+                    showingLogForDateDialog = false
+                },
+                onConfirm = { date ->
+                    scope.launch {
+                        viewmodel.onLogHabitForDate(habitForLogForDate!!, date)
+                        Toast.makeText(
+                            context,
+                            "Logged as done for ${date.format(DateTimeFormatter.ofPattern("dd MMM"))}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        showingLogForDateDialog = false
+                    }
+                }
+            )
+        }
+
         Column(modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding)
@@ -372,6 +397,10 @@ fun HomeScreen(
                             },
                             onHabitClick = {
                                 navController.navigate(Screen.HabitScreen.createRoute(it))
+                            },
+                            onLogForAnotherDay = {
+                                habitForLogForDate = it
+                                showingLogForDateDialog = true
                             }
                         )
                         Spacer(Modifier.height(16.dp))
@@ -407,6 +436,10 @@ fun HomeScreen(
                             },
                             onHabitClick = {
                                 navController.navigate(Screen.HabitScreen.createRoute(it))
+                            },
+                            onLogForAnotherDay = {
+                                habitForLogForDate = it
+                                showingLogForDateDialog = true
                             }
                         )
                         Spacer(Modifier.height(16.dp))

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
@@ -57,6 +58,7 @@ fun HabitCard(
     onSubTaskAdding : (HabitWithProgress)->Unit,
     onToggle : (SubTask)-> Unit,
     onHabitClick : (Habit) -> Unit,
+    onLogForAnotherDay : (HabitWithProgress) -> Unit = {},
 ){
     when(habitWithProgress.habit.type){
         HabitType.Count -> {
@@ -68,7 +70,8 @@ fun HabitCard(
                 onDeny = onFutureTaskStateChange,
                 onClick = {
                     onHabitClick(habitWithProgress.habit)
-                }
+                },
+                onLogForAnotherDay = { onLogForAnotherDay(habitWithProgress) }
             )
         }
         HabitType.Duration -> {
@@ -80,7 +83,8 @@ fun HabitCard(
                 onDeny = onFutureTaskStateChange,
                 onClick = {
                     onHabitClick(habitWithProgress.habit)
-                }
+                },
+                onLogForAnotherDay = { onLogForAnotherDay(habitWithProgress) }
             )
         }
         HabitType.OneTime ->{
@@ -94,7 +98,8 @@ fun HabitCard(
                         habitWithProgress = habitWithProgress,
                         onClick = {
                             onHabitClick(habitWithProgress.habit)
-                        }
+                        },
+                        onLogForAnotherDay = { onLogForAnotherDay(habitWithProgress) }
                     )
                 },
                 swipable = habitWithProgress.progress.date <= LocalDate.now(),
@@ -116,7 +121,8 @@ fun HabitCard(
                 onDeny = onFutureTaskStateChange,
                 onClick = {
                     onHabitClick(habitWithProgress.habit)
-                }
+                },
+                onLogForAnotherDay = { onLogForAnotherDay(habitWithProgress) }
             )
         }
     }
@@ -126,7 +132,8 @@ fun HabitCard(
 fun OneTimeHabit(
     modifier: Modifier = Modifier,
     habitWithProgress: HabitWithProgress,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLogForAnotherDay : () -> Unit = {}
 ) {
     HabitElement(
         color = getThemedColorFromKey(habitWithProgress.habit.colorKey),
@@ -140,7 +147,7 @@ fun OneTimeHabit(
     ){
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ){
             //title
@@ -154,6 +161,16 @@ fun OneTimeHabit(
                     fontSize = 16.sp
                 )
             )
+
+            Icon(
+                painter = painterResource(R.drawable.clock),
+                contentDescription = "Log for another day",
+                tint = if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary.copy(0.6f)
+                        else MaterialTheme.colorScheme.scrim,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onLogForAnotherDay() }
+            )
         }
     }
 }
@@ -164,7 +181,8 @@ fun CountHabit(
     habitWithProgress: HabitWithProgress,
     onAddCounter : ()->Unit,
     onDeny : ()->Unit,
-    onClick : () -> Unit
+    onClick : () -> Unit,
+    onLogForAnotherDay : () -> Unit = {}
 ) {
     HabitElement(
         color = getThemedColorFromKey(habitWithProgress.habit.colorKey),
@@ -230,6 +248,17 @@ fun CountHabit(
                     )
                 }
 
+                //clock icon for log on another day
+                Icon(
+                    painter = painterResource(R.drawable.clock),
+                    contentDescription = "Log for another day",
+                    tint = if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary.copy(0.6f)
+                            else MaterialTheme.colorScheme.scrim,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onLogForAnotherDay() }
+                )
+
                 //button
                 Box(
                     modifier = Modifier
@@ -269,7 +298,8 @@ fun DurationHabit(
     habitWithProgress: HabitWithProgress,
     onStart : (HabitWithProgress) ->Unit,
     onDeny: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLogForAnotherDay : () -> Unit = {}
 ) {
     HabitElement(
         color = getThemedColorFromKey(habitWithProgress.habit.colorKey),
@@ -287,75 +317,91 @@ fun DurationHabit(
             verticalArrangement = Arrangement.Center
         ){
             Row(
-                modifier = Modifier.wrapContentSize(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ){
-                //start button
-                Box(
-                   modifier = Modifier.size(80.dp,20.dp)
-                       .clip(RoundedCornerShape(10.dp))
-                       .border(
-                           1.dp,
-                           if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary
-                           else MaterialTheme.colorScheme.scrim,
-                           RoundedCornerShape(10.dp))
-                       .clickable{
-                           if(habitWithProgress.progress.date <= LocalDate.now()){
-                               onStart(habitWithProgress)
-                           }else{
-                               onDeny()
-                           }
-                       },
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.wrapContentSize(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ){
-                    Text(
-                        text = if(habitWithProgress.progress.status == Status.NotStarted) "Start"
-                        else if (habitWithProgress.progress.status == Status.Ongoing) "Ongoing"
-                        else "Finished",
-                        style = TextStyle(
-                            color = when(habitWithProgress.progress.status){
-                                Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                                Status.Done -> MaterialTheme.colorScheme.scrim
-                                Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                                Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
-                            },
-                            fontFamily = instrumentSerif,
-                            fontWeight = FontWeight.Bold,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 12.sp
+                    //start button
+                    Box(
+                       modifier = Modifier.size(80.dp,20.dp)
+                           .clip(RoundedCornerShape(10.dp))
+                           .border(
+                               1.dp,
+                               if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary
+                               else MaterialTheme.colorScheme.scrim,
+                               RoundedCornerShape(10.dp))
+                           .clickable{
+                               if(habitWithProgress.progress.date <= LocalDate.now()){
+                                   onStart(habitWithProgress)
+                               }else{
+                                   onDeny()
+                               }
+                           },
+                        contentAlignment = Alignment.Center
+                    ){
+                        Text(
+                            text = if(habitWithProgress.progress.status == Status.NotStarted) "Start"
+                            else if (habitWithProgress.progress.status == Status.Ongoing) "Ongoing"
+                            else "Finished",
+                            style = TextStyle(
+                                color = when(habitWithProgress.progress.status){
+                                    Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                    Status.Done -> MaterialTheme.colorScheme.scrim
+                                    Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                    Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                                },
+                                fontFamily = instrumentSerif,
+                                fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 12.sp
+                            )
                         )
+                    }
+
+                    VerticalDivider(
+                        thickness = 1.dp,
+                        color = when(habitWithProgress.progress.status){
+                            Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                            Status.Done -> MaterialTheme.colorScheme.scrim
+                            Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                            Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                        },
+                        modifier = Modifier.height(18.dp)
                     )
+
+                    //time
+                    habitWithProgress.habit.duration?.let {
+                        Text(
+                            text = habitWithProgress.habit.duration.toWord(),
+                            style = TextStyle(
+                                color = when(habitWithProgress.progress.status){
+                                    Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                    Status.Done -> MaterialTheme.colorScheme.scrim
+                                    Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                    Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                                },
+                                fontFamily = regular,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 12.sp
+                            )
+                        )
+                    }
                 }
 
-                VerticalDivider(
-                    thickness = 1.dp,
-                    color = when(habitWithProgress.progress.status){
-                        Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                        Status.Done -> MaterialTheme.colorScheme.scrim
-                        Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                        Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
-                    },
-                    modifier = Modifier.height(18.dp)
+                Icon(
+                    painter = painterResource(R.drawable.clock),
+                    contentDescription = "Log for another day",
+                    tint = if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary.copy(0.6f)
+                            else MaterialTheme.colorScheme.scrim,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onLogForAnotherDay() }
                 )
-
-                //time
-                habitWithProgress.habit.duration?.let {
-                    Text(
-                        text = habitWithProgress.habit.duration.toWord(),
-                        style = TextStyle(
-                            color = when(habitWithProgress.progress.status){
-                                Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                                Status.Done -> MaterialTheme.colorScheme.scrim
-                                Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                                Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
-                            },
-                            fontFamily = regular,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 12.sp
-                        )
-                    )
-                }
             }
             Spacer(Modifier.height(16.dp))
             //title
@@ -385,7 +431,8 @@ fun SessionHabit(
     onAddSubTask : () -> Unit = {},
     onToggle : (SubTask)->Unit = {},
     onDeny: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLogForAnotherDay : () -> Unit = {}
 ) {
     HabitElement(
         color = getThemedColorFromKey(habitWithProgress.habit.colorKey),
@@ -403,99 +450,115 @@ fun SessionHabit(
             verticalArrangement = Arrangement.Center
         ){
             Row(
-                modifier = Modifier.wrapContentSize(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ){
-                //start button
-                Box(
-                    modifier = Modifier.size(80.dp,20.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .border(
-                            1.dp,
-                            when(habitWithProgress.progress.status){
-                                Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                                Status.Done -> MaterialTheme.colorScheme.scrim
-                                Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                                Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
-                            },
-                            RoundedCornerShape(10.dp)
-                        )
-                        .clickable{
-                            if(habitWithProgress.progress.date <= LocalDate.now()){
-                                onStartSession(habitWithProgress)
-                            }else{
-                                onDeny()
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ){
-                    Text(
-                        text = if(habitWithProgress.progress.status == Status.NotStarted) "Start"
-                        else if (habitWithProgress.progress.status == Status.Ongoing) "Ongoing"
-                        else "Finished",
-                        style = TextStyle(
-                            color = when(habitWithProgress.progress.status){
-                                Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                                Status.Done -> MaterialTheme.colorScheme.scrim
-                                Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                                Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
-                            },
-                            fontFamily = instrumentSerif,
-                            fontWeight = FontWeight.Bold,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 12.sp
-                        )
-                    )
-                }
-
-                VerticalDivider(
-                    thickness = 1.dp,
-                    color = when(habitWithProgress.progress.status){
-                        Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                        Status.Done -> MaterialTheme.colorScheme.scrim
-                        Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                        Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
-                    },
-                    modifier = Modifier.height(18.dp)
-                )
-
-                //target
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.wrapContentSize(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ){
-                    Text(
-                        text = "${habitWithProgress.progress.currentCount}/"+
-                                "${habitWithProgress.progress.targetCount}",
-                        style = TextStyle(
-                            color = when(habitWithProgress.progress.status){
-                                Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                                Status.Done -> MaterialTheme.colorScheme.scrim
-                                Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                                Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                    //start button
+                    Box(
+                        modifier = Modifier.size(80.dp,20.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(
+                                1.dp,
+                                when(habitWithProgress.progress.status){
+                                    Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                    Status.Done -> MaterialTheme.colorScheme.scrim
+                                    Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                    Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                                },
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable{
+                                if(habitWithProgress.progress.date <= LocalDate.now()){
+                                    onStartSession(habitWithProgress)
+                                }else{
+                                    onDeny()
+                                }
                             },
-                            fontFamily = regular,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                        contentAlignment = Alignment.Center
+                    ){
+                        Text(
+                            text = if(habitWithProgress.progress.status == Status.NotStarted) "Start"
+                            else if (habitWithProgress.progress.status == Status.Ongoing) "Ongoing"
+                            else "Finished",
+                            style = TextStyle(
+                                color = when(habitWithProgress.progress.status){
+                                    Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                    Status.Done -> MaterialTheme.colorScheme.scrim
+                                    Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                    Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                                },
+                                fontFamily = instrumentSerif,
+                                fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 12.sp
+                            )
                         )
+                    }
+
+                    VerticalDivider(
+                        thickness = 1.dp,
+                        color = when(habitWithProgress.progress.status){
+                            Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                            Status.Done -> MaterialTheme.colorScheme.scrim
+                            Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                            Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                        },
+                        modifier = Modifier.height(18.dp)
                     )
-                    //param ex:- session
-                    Text(
-                        text = habitWithProgress.progress.countParam.displayName,
-                        style = TextStyle(
-                            color = when(habitWithProgress.progress.status){
-                                Status.Cancelled -> MaterialTheme.colorScheme.scrim
-                                Status.Done -> MaterialTheme.colorScheme.scrim
-                                Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
-                                Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
-                            },
-                            fontFamily = regular,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 12.sp
+
+                    //target
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ){
+                        Text(
+                            text = "${habitWithProgress.progress.currentCount}/"+
+                                    "${habitWithProgress.progress.targetCount}",
+                            style = TextStyle(
+                                color = when(habitWithProgress.progress.status){
+                                    Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                    Status.Done -> MaterialTheme.colorScheme.scrim
+                                    Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                    Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                                },
+                                fontFamily = regular,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
                         )
-                    )
+                        //param ex:- session
+                        Text(
+                            text = habitWithProgress.progress.countParam.displayName,
+                            style = TextStyle(
+                                color = when(habitWithProgress.progress.status){
+                                    Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                    Status.Done -> MaterialTheme.colorScheme.scrim
+                                    Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                    Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                                },
+                                fontFamily = regular,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 12.sp
+                            )
+                        )
+                    }
                 }
+
+                Icon(
+                    painter = painterResource(R.drawable.clock),
+                    contentDescription = "Log for another day",
+                    tint = if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary.copy(0.6f)
+                            else MaterialTheme.colorScheme.scrim,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onLogForAnotherDay() }
+                )
             }
             Spacer(Modifier.height(16.dp))
             //title
