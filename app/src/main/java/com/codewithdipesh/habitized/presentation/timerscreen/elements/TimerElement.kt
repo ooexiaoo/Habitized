@@ -80,6 +80,14 @@ fun TimerElement(
             manager.unbindService()
         }
     }
+    LaunchedEffect(start) {
+        if (start && !finished) {
+            second = duration.second
+            minute = duration.minute
+            hour = duration.hour
+            count = 0
+        }
+    }
     LaunchedEffect(timerState.minute,timerState.hour,timerState.second){
         if (start && !finished) {
             second = timerState.second

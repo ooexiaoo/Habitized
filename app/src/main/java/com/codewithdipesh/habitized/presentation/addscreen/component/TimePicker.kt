@@ -57,8 +57,11 @@ fun TimePicker(
 
     LaunchedEffect(items){
         itemState = items
-        val index = items.indexOf(initialItem) - 1
-        var targetIndex = index + ((Int.MAX_VALUE / 2) / items.size) * items.size
+        val cycles = 100000
+        val itemCount = items.size * cycles
+        val halfCycles = cycles / 2
+        val index = items.indexOf(initialItem)
+        val targetIndex = (halfCycles * items.size) + index
         scrollState.scrollToItem(targetIndex)
         lastSelectedIndex = targetIndex
     }
@@ -73,7 +76,7 @@ fun TimePicker(
         )
     ){
         items(
-            count = Int.MAX_VALUE/2
+            count = items.size * 100000
         ){ i->
             val item = items[i%items.size]
 

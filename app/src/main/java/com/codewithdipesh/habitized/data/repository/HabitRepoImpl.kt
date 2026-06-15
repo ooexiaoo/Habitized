@@ -29,6 +29,7 @@ import com.codewithdipesh.habitized.domain.repository.HabitRepository
 import com.codewithdipesh.habitized.presentation.util.getWeekDayIndex
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 
 class HabitRepoImpl(
@@ -60,6 +61,10 @@ class HabitRepoImpl(
         if (existingHabit != null) {
             // Update existing habit - preserves foreign key relations (progress, subtasks, etc.)
             habitDao.updateHabit(habit.toEntity())
+            // Sync duration to existing (non-Done) progress records
+            if (habit.duration != null) {
+                updateProgressDurationForHabit(habit.habit_id!!, habit.duration)
+            }
         } else {
             // Insert new habit
             habitDao.insertHabit(habit.toEntity())
@@ -190,6 +195,13 @@ class HabitRepoImpl(
             status = Status.Ongoing.toString(),
             progressId = progressId
         )
+    }
+
+    override suspend fun updateProgressDurationForHabit(habitId: UUID, duration: LocalTime?) {
+        val durationStr = duration?.let {
+            String.format("%02d:%02d:%02d", it.hour, it.minute, it.second)
+        }
+        habitProgressDao.updateTargetDurationForHabit(habitId, durationStr)
     }
 
     override suspend fun onUpdateCounterHabitProgress(count:Int,progressId: UUID) {

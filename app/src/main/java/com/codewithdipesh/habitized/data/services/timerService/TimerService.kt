@@ -104,7 +104,10 @@ class TimerService : Service() {
 
     private fun startForegroundService(id:String,title:String,durationSeconds:Int,color:String,screen:String){
         //reinitializing when we retry
-        _timerState.value = TimerClassState(0, 0, 0, false,false)
+        val initialHour = durationSeconds / 3600
+        val initialMinute = (durationSeconds % 3600) / 60
+        val initialSecond = durationSeconds % 60
+        _timerState.value = TimerClassState(initialHour, initialMinute, initialSecond, false, false)
 
         startTime = System.currentTimeMillis()
         totalDurationMs = durationSeconds * 1000L
@@ -147,7 +150,7 @@ class TimerService : Service() {
                     break
                 }
 
-                val remainingSeconds = (remainingMs / 1000).toInt()
+                val remainingSeconds = ((remainingMs + 999) / 1000).toInt()
                 val hour = remainingSeconds / 3600
                 val minute = (remainingSeconds % 3600) / 60
                 val second = remainingSeconds % 60
