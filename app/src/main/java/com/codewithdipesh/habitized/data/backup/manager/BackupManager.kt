@@ -1,12 +1,9 @@
 package com.codewithdipesh.habitized.data.backup.manager
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
 import com.codewithdipesh.habitized.DATABASE_VERSION
 import com.codewithdipesh.habitized.data.backup.model.BackupData
 import com.codewithdipesh.habitized.data.backup.model.BackupFileInfo
@@ -54,6 +51,9 @@ class BackupManager @Inject constructor(
     private val habitPreference: HabitPreference
 ) {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
+
+    private val backupDir: File
+        get() = File(context.filesDir, "backups").also { it.mkdirs() }
 
     companion object {
         private const val BACKUP_FILE_PREFIX = "habitized_backup_"
@@ -202,100 +202,35 @@ class BackupManager @Inject constructor(
 
 
     suspend fun listAvailableBackups(): List<BackupFileInfo> = withContext(Dispatchers.IO) {
-        val backups = mutableListOf<BackupFileInfo>()
+        backupDir.listFiles { file ->
+            file.name.startsWith(BACKUP_FILE_PREFIX) &&
+                    file.name.endsWith(BACKUP_FILE_EXTENSION)
+        }?.sortedByDescending { it.lastModified() }?.map { file ->
+            val dateTime = java.text.SimpleDateFormat(
+                "MMM dd, yyyy HH:mm",
+                java.util.Locale.getDefault()
+            ).format(java.util.Date(file.lastModified()))
 
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Use MediaStore for Android 10+
-                val projection = arrayOf(
-                    MediaStore.Downloads._ID,
-                    MediaStore.Downloads.DISPLAY_NAME,
-                    MediaStore.Downloads.SIZE,
-                    MediaStore.Downloads.DATE_MODIFIED
-                )
-
-                val selection = "${MediaStore.Downloads.DISPLAY_NAME} LIKE ?"
-                val selectionArgs = arrayOf("$BACKUP_FILE_PREFIX%$BACKUP_FILE_EXTENSION")
-
-                context.contentResolver.query(
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                    projection,
-                    selection,
-                    selectionArgs,
-                    "${MediaStore.Downloads.DATE_MODIFIED} DESC"
-                )?.use { cursor ->
-                    val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID)
-                    val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME)
-                    val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Downloads.SIZE)
-                    val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Downloads.DATE_MODIFIED)
-
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getLong(idColumn)
-                        val name = cursor.getString(nameColumn)
-                        val size = cursor.getLong(sizeColumn)
-                        val dateModified = cursor.getLong(dateColumn)
-
-                        val uri = Uri.withAppendedPath(
-                            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                            id.toString()
-                        )
-
-                        val dateTime = java.text.SimpleDateFormat(
-                            "MMM dd, yyyy HH:mm",
-                            java.util.Locale.getDefault()
-                        ).format(java.util.Date(dateModified * 1000))
-
-                        backups.add(
-                            BackupFileInfo(
-                                fileName = name,
-                                displayName = name.removeSuffix(BACKUP_FILE_EXTENSION)
-                                    .removePrefix(BACKUP_FILE_PREFIX),
-                                dateTime = dateTime,
-                                fileSizeBytes = size,
-                                fileSizeDisplay = formatFileSize(size),
-                                uri = uri.toString()
-                            )
-                        )
-                    }
-                }
-            } else {
-                // Direct file access for Android 9 and below
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_DOWNLOADS
-                )
-                downloadsDir.listFiles { file ->
-                    file.name.startsWith(BACKUP_FILE_PREFIX) &&
-                            file.name.endsWith(BACKUP_FILE_EXTENSION)
-                }?.sortedByDescending { it.lastModified() }?.forEach { file ->
-                    val dateTime = java.text.SimpleDateFormat(
-                        "MMM dd, yyyy HH:mm",
-                        java.util.Locale.getDefault()
-                    ).format(java.util.Date(file.lastModified()))
-
-                    backups.add(
-                        BackupFileInfo(
-                            fileName = file.name,
-                            displayName = file.name.removeSuffix(BACKUP_FILE_EXTENSION)
-                                .removePrefix(BACKUP_FILE_PREFIX),
-                            dateTime = dateTime,
-                            fileSizeBytes = file.length(),
-                            fileSizeDisplay = formatFileSize(file.length()),
-                            uri = Uri.fromFile(file).toString()
-                        )
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            // Return empty list on error
-        }
-
-        backups
+            BackupFileInfo(
+                fileName = file.name,
+                displayName = file.name.removeSuffix(BACKUP_FILE_EXTENSION)
+                    .removePrefix(BACKUP_FILE_PREFIX),
+                dateTime = dateTime,
+                fileSizeBytes = file.length(),
+                fileSizeDisplay = formatFileSize(file.length()),
+                uri = Uri.fromFile(file).toString()
+            )
+        } ?: emptyList()
     }
 
     suspend fun deleteBackup(uri: Uri): BackupResult = withContext(Dispatchers.IO) {
         try {
-            val rowsDeleted = context.contentResolver.delete(uri, null, null)
-            if (rowsDeleted > 0) {
+            val deleted = if (uri.scheme == "file") {
+                File(uri.path!!).delete()
+            } else {
+                context.contentResolver.delete(uri, null, null) > 0
+            }
+            if (deleted) {
                 BackupResult.Success("Backup deleted successfully")
             } else {
                 BackupResult.Error("Could not delete backup file")
@@ -344,38 +279,9 @@ class BackupManager @Inject constructor(
 
     private fun saveToDownloads(fileName: String, content: String): Boolean {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Use MediaStore for Android 10+
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                    put(MediaStore.Downloads.MIME_TYPE, "application/json")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-
-                val uri = context.contentResolver.insert(
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                    contentValues
-                )
-
-                uri?.let {
-                    context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                        outputStream.write(content.toByteArray())
-                    }
-
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                    context.contentResolver.update(it, contentValues, null, null)
-                    true
-                } ?: false
-            } else {
-                // Direct file access for Android 9 and below
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_DOWNLOADS
-                )
-                val file = File(downloadsDir, fileName)
-                file.writeText(content)
-                true
-            }
+            val file = File(backupDir, fileName)
+            file.writeText(content)
+            true
         } catch (e: Exception) {
             false
         }
