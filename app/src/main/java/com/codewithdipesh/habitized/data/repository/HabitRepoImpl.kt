@@ -62,9 +62,7 @@ class HabitRepoImpl(
             // Update existing habit - preserves foreign key relations (progress, subtasks, etc.)
             habitDao.updateHabit(habit.toEntity())
             // Sync duration to existing (non-Done) progress records
-            if (habit.duration != null) {
-                updateProgressDurationForHabit(habit.habit_id!!, habit.duration)
-            }
+            updateProgressDurationForHabit(habit.habit_id!!, habit.duration)
         } else {
             // Insert new habit
             habitDao.insertHabit(habit.toEntity())
