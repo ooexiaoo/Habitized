@@ -7,6 +7,7 @@ import com.codewithdipesh.habitized.data.services.timerService.TimerService
 import com.codewithdipesh.habitized.data.sharedPref.HabitPreference
 import com.codewithdipesh.habitized.domain.model.Frequency
 import com.codewithdipesh.habitized.domain.model.Habit
+import com.codewithdipesh.habitized.domain.model.HabitType
 import com.codewithdipesh.habitized.domain.model.HabitWithProgress
 import com.codewithdipesh.habitized.domain.model.Status
 import com.codewithdipesh.habitized.domain.repository.HabitRepository
@@ -40,16 +41,22 @@ class DurationViewModel @Inject constructor(
 
     suspend fun init(id : UUID){
         val response = repo.getHabitProgressById(id)
+        val isStopwatch = response.habit.type == HabitType.Stopwatch
         _state.value = _state.value.copy(
             progressId = id,
             habitWithProgress = response,
-            timerState = when(response.progress.status){
-                is Status.Done -> TimerState.Finished
-                Status.Ongoing -> TimerState.Resumed
+            timerState = when{
+                isStopwatch && response.progress.status != Status.Done -> TimerState.Resumed
+                response.progress.status is Status.Done -> TimerState.Finished
+                response.progress.status == Status.Ongoing -> TimerState.Resumed
                 else -> TimerState.Not_Started
             },
-            isStarted = response.progress.status == Status.Ongoing
+            isStarted = isStopwatch || response.progress.status == Status.Ongoing
         )
+    }
+
+    fun isStopwatch(): Boolean {
+        return _state.value.habitWithProgress?.habit?.type == HabitType.Stopwatch
     }
 
     fun resumeTimer(){
@@ -89,21 +96,39 @@ class DurationViewModel @Inject constructor(
             isStarted = true,
             timerState = TimerState.Resumed
         )
+        val isStopwatch = isStopwatch()
         val intent = Intent(context, TimerService::class.java).apply {
             putExtra("duration_seconds",totalSeconds)
             putExtra("habit",_state.value.habitWithProgress!!.habit.title)
             putExtra("id",_state.value.progressId.toString())
             putExtra("color",_state.value.habitWithProgress!!.habit.colorKey)
+            putExtra("is_stopwatch", isStopwatch)
         }
         context.startForegroundService(intent)
         repo.onStartedHabitProgress(_state.value.progressId!!)
     }
 
     suspend fun finishHabit(){
-        _state.value.progressId?.let {
-            repo.onDoneHabitProgress(_state.value.progressId!!)
+        _state.value.progressId?.let { id ->
+            if (isStopwatch()) {
+                val elapsedDuration = java.time.LocalTime.of(
+                    _state.value.elapsedHour,
+                    _state.value.elapsedMinute,
+                    _state.value.elapsedSecond
+                )
+                repo.updateProgressDuration(id, elapsedDuration)
+            }
+            repo.onDoneHabitProgress(id)
             updateStreak(_state.value.habitWithProgress!!)
         }
+    }
+
+    fun updateElapsedTime(hour: Int, minute: Int, second: Int){
+        _state.value = _state.value.copy(
+            elapsedHour = hour,
+            elapsedMinute = minute,
+            elapsedSecond = second
+        )
     }
 
     fun chooseTheme(theme: Theme){

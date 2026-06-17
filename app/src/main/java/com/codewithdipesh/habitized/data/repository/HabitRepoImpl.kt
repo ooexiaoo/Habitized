@@ -148,22 +148,25 @@ class HabitRepoImpl(
 
     override suspend fun addTodayHabitProgresses(habits : List<HabitEntity>,date: LocalDate) {
         habits.forEach { habit->
-            habitProgressDao.insertProgress(
-                HabitProgressEntity(
-                     habitId = habit.habit_id,
-                     date = date,
-                     type = habit.type,
-                     countParam = habit.countParam,
-                     currentCount = 0,
-                     targetCount = habit.countTarget,
-                     targetDurationValue = habit.duration,
-                     currentSessionNumber = if(habit.type == HabitType.Session.toString()) 0 else null,
-                     targetSessionNumber = if(habit.type == HabitType.Session.toString()) habit.countTarget else null,
-                     status  = Status.NotStarted.toString(),
-                     notes = null,
-                     excuse = null
+            val existing = habitProgressDao.getHabitProgressOfTheDay(habit.habit_id, date)
+            if (existing == null) {
+                habitProgressDao.insertProgress(
+                    HabitProgressEntity(
+                         habitId = habit.habit_id,
+                         date = date,
+                         type = habit.type,
+                         countParam = habit.countParam,
+                         currentCount = 0,
+                         targetCount = habit.countTarget,
+                         targetDurationValue = habit.duration,
+                         currentSessionNumber = if(habit.type == HabitType.Session.toString()) 0 else null,
+                         targetSessionNumber = if(habit.type == HabitType.Session.toString()) habit.countTarget else null,
+                         status  = Status.NotStarted.toString(),
+                         notes = null,
+                         excuse = null
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -200,6 +203,13 @@ class HabitRepoImpl(
             String.format("%02d:%02d:%02d", it.hour, it.minute, it.second)
         }
         habitProgressDao.updateTargetDurationForHabit(habitId, durationStr)
+    }
+
+    override suspend fun updateProgressDuration(progressId: UUID, duration: LocalTime?) {
+        val durationStr = duration?.let {
+            String.format("%02d:%02d:%02d", it.hour, it.minute, it.second)
+        }
+        habitProgressDao.updateProgressDuration(progressId, durationStr)
     }
 
     override suspend fun onUpdateCounterHabitProgress(count:Int,progressId: UUID) {
@@ -338,7 +348,7 @@ class HabitRepoImpl(
             }
         //create all the progress
         (0 until 7).map{date.plusDays(it.toLong())}.forEach {
-            addTodayHabitProgresses(habits,date)
+            addTodayHabitProgresses(habits,it)
         }
 
         return habits.map { habit ->

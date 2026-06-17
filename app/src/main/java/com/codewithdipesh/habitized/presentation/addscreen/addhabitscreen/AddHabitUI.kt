@@ -41,6 +41,8 @@ data class AddHabitUI(
     val isShowingParamOptions : Boolean = false,
     val isShowReminderTime : Boolean = false,
 
+    val isReady: Boolean = false,
+
     val colorOptions : Map<Int,String> = mapOf(
         R.color.red to "red",
         R.color.blue to "blue",

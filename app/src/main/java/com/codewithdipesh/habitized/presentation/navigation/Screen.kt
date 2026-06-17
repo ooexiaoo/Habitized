@@ -3,6 +3,7 @@ package com.codewithdipesh.habitized.presentation.navigation
 import com.codewithdipesh.habitized.domain.model.Goal
 import com.codewithdipesh.habitized.domain.model.Habit
 import com.codewithdipesh.habitized.domain.model.HabitProgress
+import com.codewithdipesh.habitized.domain.model.HabitType
 import com.codewithdipesh.habitized.domain.model.HabitWithProgress
 import java.time.LocalDate
 import java.time.LocalTime
@@ -27,11 +28,15 @@ sealed class Screen(val route : String){
             val id = habitWithProgress.progress.progressId
             val title = Base64.UrlSafe.encode(habitWithProgress.habit.title.toByteArray())
 
-            val time = habitWithProgress.progress.targetDurationValue
-            val hour = time!!.hour
-            val minutes = time.minute
-            val seconds = time.second
-            val target = (hour*3600) +( minutes*60) + seconds
+            val target = if (habitWithProgress.habit.type == HabitType.Stopwatch) {
+                0
+            } else {
+                val time = habitWithProgress.progress.targetDurationValue
+                val hour = time!!.hour
+                val minutes = time.minute
+                val seconds = time.second
+                (hour*3600) + (minutes*60) + seconds
+            }
 
             val color = habitWithProgress.habit.colorKey
             return "duration/$id/$title/$target/$color"

@@ -78,4 +78,5 @@ interface HabitRepository {
     suspend fun getTasksForDay(date: LocalDate): List<OneTimeTask>
 
     suspend fun updateProgressDurationForHabit(habitId: UUID, duration: LocalTime?)
+    suspend fun updateProgressDuration(progressId: UUID, duration: LocalTime?)
 }

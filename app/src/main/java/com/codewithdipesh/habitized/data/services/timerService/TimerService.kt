@@ -33,6 +33,7 @@ class TimerService : Service() {
     private var totalDurationMs: Long = 0
     private var pausedTimeMs: Long = 0
     private var totalPausedDurationMs: Long = 0
+    private var isStopwatch: Boolean = false
 
     //store the title , id , color of the habit
     private var title : String = ""
@@ -41,7 +42,7 @@ class TimerService : Service() {
     private var screen : String = ""
 
     //timerState
-    private val _timerState = MutableStateFlow(TimerClassState(0, 0, 0, false,false))
+    private val _timerState = MutableStateFlow(TimerClassState(0, 0, 0, false,false,false))
     val timerState: StateFlow<TimerClassState> = _timerState.asStateFlow()
 
     //pendingIntent
@@ -67,6 +68,7 @@ class TimerService : Service() {
         title = intent?.getStringExtra("habit") ?: "Habit Timer"
         color = intent?.getStringExtra("color") ?: "yellow"
         screen = intent?.getStringExtra("screen") ?: "duration"
+        isStopwatch = intent?.getBooleanExtra("is_stopwatch", false) ?: false
         startForegroundService(durationSeconds = totalSeconds,title = title,id = id, color = color, screen = screen)
         return START_STICKY
     }
@@ -107,7 +109,7 @@ class TimerService : Service() {
         val initialHour = durationSeconds / 3600
         val initialMinute = (durationSeconds % 3600) / 60
         val initialSecond = durationSeconds % 60
-        _timerState.value = TimerClassState(initialHour, initialMinute, initialSecond, false, false)
+        _timerState.value = TimerClassState(initialHour, initialMinute, initialSecond, false, false, isStopwatch)
 
         startTime = System.currentTimeMillis()
         totalDurationMs = durationSeconds * 1000L
@@ -137,41 +139,65 @@ class TimerService : Service() {
             while (true) {
                 val currentTime = System.currentTimeMillis()
                 val elapsedMs = currentTime - startTime - totalPausedDurationMs
-                val remainingMs = totalDurationMs - elapsedMs
 
-                if (remainingMs <= 0) {
-                    notificationManager.notify(TIMER_NOTIFICATION_ID, showAlarmNotification())
-                    _timerState.value = _timerState.value.copy(
-                        isPaused = false,
-                        isFinished = true
+                if (!isStopwatch) {
+                    val remainingMs = totalDurationMs - elapsedMs
+                    if (remainingMs <= 0) {
+                        notificationManager.notify(TIMER_NOTIFICATION_ID, showAlarmNotification())
+                        _timerState.value = _timerState.value.copy(
+                            isPaused = false,
+                            isFinished = true
+                        )
+                        timerCallback?.onTimerFinished()
+                        stopSelf()
+                        break
+                    }
+
+                    val remainingSeconds = ((remainingMs + 999) / 1000).toInt()
+                    val hour = remainingSeconds / 3600
+                    val minute = (remainingSeconds % 3600) / 60
+                    val second = remainingSeconds % 60
+
+                    val timerString = String.format("%02d:%02d:%02d", hour, minute, second)
+                    val notification = createNotification(
+                        "Time Left : $timerString",
+                        title,
+                        (totalDurationMs / 1000).toInt(),
+                        (elapsedMs / 1000).toInt(),
+                        pendingIntent
                     )
-                    timerCallback?.onTimerFinished()
-                    stopSelf()
-                    break
+
+                    _timerState.value = _timerState.value.copy(
+                        hour=hour,
+                        minute = minute,
+                        second=second
+                    )
+                    timerCallback?.onTimerUpdate(hour, minute, second)
+                    notificationManager.notify(TIMER_NOTIFICATION_ID, notification)
+                } else {
+                    // Stopwatch mode: display elapsed time, never auto-finish
+                    val elapsedSeconds = (elapsedMs / 1000).toInt()
+                    val hour = elapsedSeconds / 3600
+                    val minute = (elapsedSeconds % 3600) / 60
+                    val second = elapsedSeconds % 60
+
+                    val timerString = String.format("%02d:%02d:%02d", hour, minute, second)
+                    val notification = createNotification(
+                        "Elapsed : $timerString",
+                        title,
+                        0,
+                        0,
+                        pendingIntent
+                    )
+
+                    _timerState.value = _timerState.value.copy(
+                        hour=hour,
+                        minute = minute,
+                        second=second
+                    )
+                    timerCallback?.onTimerUpdate(hour, minute, second)
+                    notificationManager.notify(TIMER_NOTIFICATION_ID, notification)
                 }
-
-                val remainingSeconds = ((remainingMs + 999) / 1000).toInt()
-                val hour = remainingSeconds / 3600
-                val minute = (remainingSeconds % 3600) / 60
-                val second = remainingSeconds % 60
-
-                val timerString = String.format("%02d:%02d:%02d", hour, minute, second)
-                val notification = createNotification(
-                    "Time Left : $timerString",
-                    title,
-                    (totalDurationMs / 1000).toInt(),
-                    (elapsedMs / 1000).toInt(),
-                    pendingIntent
-                )
-
-                //updating in service state
-                _timerState.value = _timerState.value.copy(
-                    hour=hour,
-                    minute = minute,
-                    second=second
-                )
-                timerCallback?.onTimerUpdate(hour, minute, second)
-                notificationManager.notify(TIMER_NOTIFICATION_ID, notification)
 
                 val nextUpdateTime = startTime + ((elapsedMs / 1000 + 1) * 1000)
                 val delayMs = nextUpdateTime - System.currentTimeMillis()

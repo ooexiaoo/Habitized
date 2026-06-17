@@ -382,6 +382,15 @@ fun HomeScreen(
                                     navController.navigate(Screen.DurationScreen.createRoute(it))
                                 }
                             },
+                            onStartStopwatch = {
+                                if(state.ongoingHabit != null && it != state.ongoingHabit ){
+                                    scope.launch {
+                                        Toast.makeText(context,"Already Habit Running", Toast.LENGTH_SHORT).show()
+                                    }
+                                }else{
+                                    navController.navigate(Screen.DurationScreen.createRoute(it))
+                                }
+                            },
                             onStartSession = {
                                 if(state.ongoingHabit != null && it != state.ongoingHabit ){
                                     scope.launch {
@@ -430,6 +439,7 @@ fun HomeScreen(
                                 showingCounter = true
                                 habitForCounter = it
                             },
+                            onStartStopwatch = {},
                             onFutureTaskStateChange = {
                                 scope.launch {
                                     Toast.makeText(context,"Can't start Future Tasks", Toast.LENGTH_SHORT).show()

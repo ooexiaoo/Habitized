@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.max
@@ -62,7 +63,7 @@ class HomeViewModel @Inject constructor(
             val ongoingHabit = habits
                 .asSequence()
                 .filter { habit ->
-                    (habit.habit.type == HabitType.Duration || habit.habit.type == HabitType.Session) &&
+                    (habit.habit.type == HabitType.Duration || habit.habit.type == HabitType.Session || habit.habit.type == HabitType.Stopwatch) &&
                             habit.progress.status == Status.Ongoing
                 }
                 .firstOrNull()
@@ -237,6 +238,15 @@ class HomeViewModel @Inject constructor(
 
         if(ongoingHabit != null) {
             if(ongoingHabit.habit.type == HabitType.Duration) {
+                repo.onDoneHabitProgress(ongoingHabit.progress.progressId)
+                updateStreak(ongoingHabit)
+            } else if (ongoingHabit.habit.type == HabitType.Stopwatch) {
+                val elapsedDuration = LocalTime.of(
+                    _uiState.value.ongoingHour,
+                    _uiState.value.ongoingMinute,
+                    _uiState.value.ongoingSecond
+                )
+                repo.updateProgressDuration(ongoingHabit.progress.progressId, elapsedDuration)
                 repo.onDoneHabitProgress(ongoingHabit.progress.progressId)
                 updateStreak(ongoingHabit)
             } else {

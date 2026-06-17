@@ -53,6 +53,7 @@ fun HabitCard(
     onSkip : (HabitWithProgress) -> Unit = {},
     onUnSkip : (HabitWithProgress) -> Unit = {},
     onStartDuration : (HabitWithProgress)-> Unit = {},
+    onStartStopwatch : (HabitWithProgress)-> Unit = {},
     onStartSession : (HabitWithProgress)-> Unit = {},
     onFutureTaskStateChange : () ->Unit = {},
     onSubTaskAdding : (HabitWithProgress)->Unit,
@@ -106,6 +107,19 @@ fun HabitCard(
                 onDeny = onFutureTaskStateChange,
                 isReminder = habitWithProgress.habit.reminderType != null,
                 height = 60
+            )
+        }
+        HabitType.Stopwatch -> {
+            StopwatchHabit(
+                habitWithProgress = habitWithProgress,
+                onStart = {
+                    onStartStopwatch(it)
+                },
+                onDeny = onFutureTaskStateChange,
+                onClick = {
+                    onHabitClick(habitWithProgress.habit)
+                },
+                onLogForAnotherDay = { onLogForAnotherDay(habitWithProgress) }
             )
         }
         HabitType.Session -> {
@@ -405,6 +419,131 @@ fun DurationHabit(
             }
             Spacer(Modifier.height(16.dp))
             //title
+            Text(
+                text = habitWithProgress.habit.title,
+                style = TextStyle(
+                    color = when(habitWithProgress.progress.status){
+                        Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                        Status.Done -> MaterialTheme.colorScheme.scrim
+                        Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                        Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                    },
+                    fontFamily = regular,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun StopwatchHabit(
+    modifier: Modifier = Modifier,
+    habitWithProgress: HabitWithProgress,
+    onStart : (HabitWithProgress) ->Unit,
+    onDeny: () -> Unit,
+    onClick: () -> Unit,
+    onLogForAnotherDay : () -> Unit = {}
+) {
+    HabitElement(
+        color = getThemedColorFromKey(habitWithProgress.habit.colorKey),
+        reminder = when(habitWithProgress.habit.reminderType){
+            is ReminderType.Once -> habitWithProgress.habit.reminderType.reminderTime
+            else -> null
+        },
+        isDone = habitWithProgress.progress.status != Status.NotStarted,
+        clickable = true,
+        onClick = onClick
+    ){
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Center
+        ){
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ){
+                Row(
+                    modifier = Modifier.wrapContentSize(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ){
+                    Box(
+                        modifier = Modifier.size(80.dp,20.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(
+                                1.dp,
+                                if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.scrim,
+                                RoundedCornerShape(10.dp))
+                            .clickable{
+                                if(habitWithProgress.progress.date <= LocalDate.now()){
+                                    onStart(habitWithProgress)
+                                }else{
+                                    onDeny()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ){
+                        Text(
+                            text = if(habitWithProgress.progress.status == Status.NotStarted) "Start"
+                            else "Finished",
+                            style = TextStyle(
+                                color = when(habitWithProgress.progress.status){
+                                    Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                    Status.Done -> MaterialTheme.colorScheme.scrim
+                                    Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                    Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                                },
+                                fontFamily = instrumentSerif,
+                                fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 12.sp
+                            )
+                        )
+                    }
+
+                    VerticalDivider(
+                        thickness = 1.dp,
+                        color = when(habitWithProgress.progress.status){
+                            Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                            Status.Done -> MaterialTheme.colorScheme.scrim
+                            Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                            Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                        },
+                        modifier = Modifier.height(18.dp)
+                    )
+
+                    Text(
+                        text = "∞",
+                        style = TextStyle(
+                            color = when(habitWithProgress.progress.status){
+                                Status.Cancelled -> MaterialTheme.colorScheme.scrim
+                                Status.Done -> MaterialTheme.colorScheme.scrim
+                                Status.NotStarted -> MaterialTheme.colorScheme.onPrimary
+                                Status.Ongoing -> MaterialTheme.colorScheme.onPrimary
+                            },
+                            fontFamily = regular,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 14.sp
+                        )
+                    )
+                }
+
+                Icon(
+                    painter = painterResource(R.drawable.clock),
+                    contentDescription = "Log for another day",
+                    tint = if(habitWithProgress.progress.status == Status.NotStarted) MaterialTheme.colorScheme.onPrimary.copy(0.6f)
+                            else MaterialTheme.colorScheme.scrim,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onLogForAnotherDay() }
+                )
+            }
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = habitWithProgress.habit.title,
                 style = TextStyle(

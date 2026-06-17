@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +60,7 @@ import com.codewithdipesh.habitized.presentation.timerscreen.elements.TimerEleme
 import com.codewithdipesh.habitized.presentation.util.getThemedColorFromKey
 import com.codewithdipesh.habitized.presentation.util.toWord
 import com.codewithdipesh.habitized.ui.theme.regular
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.util.UUID
@@ -86,6 +88,9 @@ fun DurationScreen(
     var showCompleteAlertBox by remember { mutableStateOf(false) }
 
     var totalSeconds by remember { mutableStateOf(0) }
+    val isStopwatch by remember {
+        derivedStateOf { state.habitWithProgress?.habit?.type == com.codewithdipesh.habitized.domain.model.HabitType.Stopwatch }
+    }
 
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
     val inverseColor = MaterialTheme.colorScheme.inverseOnSurface
@@ -120,8 +125,25 @@ fun DurationScreen(
         }
     }
 
+    var hasAutoStarted by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewmodel.init(habitProgressId)
+    }
+
+    LaunchedEffect(state.isStarted, isStopwatch, hasAutoStarted) {
+        if (isStopwatch && state.isStarted && !hasAutoStarted) {
+            hasAutoStarted = true
+            viewmodel.startTimer(context, 0)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        manager.timerState.collect { ts ->
+            if (isStopwatch) {
+                viewmodel.updateElapsedTime(ts.hour, ts.minute, ts.second)
+            }
+        }
     }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -286,7 +308,7 @@ fun DurationScreen(
                 Box(
                     Modifier.align(Alignment.TopStart)
                 ){
-                    if(state.timerState != TimerState.Not_Started){
+                    if(state.timerState != TimerState.Not_Started && !isStopwatch){
                         Text(
                             text = targetDurationValue.toWord(),
                             style = TextStyle(
@@ -311,6 +333,7 @@ fun DurationScreen(
                         manager = manager,
                         start = state.isStarted,
                         finished = state.timerState == TimerState.Finished,
+                        isStopwatch = isStopwatch,
                         onPrimary = onPrimary,
                         onStart = {
                             totalSeconds = it

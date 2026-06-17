@@ -62,6 +62,9 @@ interface HabitProgressDao {
     @Query("UPDATE habit_progress SET targetDurationValue = :duration WHERE habitId = :habitId AND status != :doneStatus")
     suspend fun updateTargetDurationForHabit(habitId: UUID, duration: String?, doneStatus: String = "Done")
 
+    @Query("UPDATE habit_progress SET targetDurationValue = :duration WHERE progressId = :progressId")
+    suspend fun updateProgressDuration(progressId: UUID, duration: String?)
+
     @Query("DELETE FROM habit_progress")
     suspend fun deleteAllProgress()
 }

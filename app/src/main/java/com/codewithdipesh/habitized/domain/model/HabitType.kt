@@ -4,6 +4,7 @@ sealed class HabitType(val displayName: String) {
     object OneTime : HabitType("Task")
     object Count : HabitType("Repeats")
     object Duration : HabitType("Timer")
+    object Stopwatch : HabitType("Stopwatch")
     object Session : HabitType("Session")
 
     override fun toString(): String = displayName
@@ -13,13 +14,14 @@ sealed class HabitType(val displayName: String) {
             return when (value.lowercase()) {
                 "repeats","count" -> Count
                 "timer","duration" -> Duration
+                "stopwatch" -> Stopwatch
                 "session", -> Session
                 "task","onetime" -> OneTime
                 else -> Count
             }
         }
         fun getHabitTypes(): List<HabitType> {
-            return listOf(OneTime, Count, Duration, Session)
+            return listOf(OneTime, Stopwatch, Count, Duration, Session)
         }
     }
 }

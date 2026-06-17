@@ -85,6 +85,7 @@ sealed class CountParam(val displayName: String) {
                     Lessons,
                     Chapters
                 )
+                HabitType.Stopwatch -> emptyList()
                 HabitType.OneTime -> emptyList()
             }
 

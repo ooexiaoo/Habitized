@@ -175,21 +175,22 @@ class AddViewModel @Inject constructor(
     }
 
     fun setType(type: HabitType){
+        val params = CountParam.getParams(type)
         _habitUiState.value = _habitUiState.value.copy(
             type = type,
-            paramOptions = CountParam.getParams(type),
-            countParam = if(type == HabitType.OneTime) null
-            else CountParam.getParams(type).first(),
+            paramOptions = params,
+            countParam = if (type == HabitType.OneTime || type == HabitType.Stopwatch) null
+            else params.first(),
             countTarget = when(type) {
-                HabitType.OneTime, HabitType.Duration -> null
+                HabitType.OneTime, HabitType.Duration, HabitType.Stopwatch -> null
                 else -> _habitUiState.value.countTarget
             },
-            selectedHour = if (type == HabitType.OneTime || type == HabitType.Count) 0
+            selectedHour = if (type == HabitType.OneTime || type == HabitType.Count || type == HabitType.Stopwatch) 0
                            else _habitUiState.value.selectedHour,
-            selectedMinute = if (type == HabitType.OneTime || type == HabitType.Count) 0
+            selectedMinute = if (type == HabitType.OneTime || type == HabitType.Count || type == HabitType.Stopwatch) 0
                              else _habitUiState.value.selectedMinute,
-            selectedSeconds = if (type == HabitType.OneTime || type == HabitType.Count) 0
-                              else _habitUiState.value.selectedSeconds
+            selectedSeconds = if (type == HabitType.OneTime || type == HabitType.Count || type == HabitType.Stopwatch) 0
+                               else _habitUiState.value.selectedSeconds
         )
     }
 
@@ -361,6 +362,7 @@ class AddViewModel @Inject constructor(
                 }
             }
             HabitType.OneTime -> {}
+            HabitType.Stopwatch -> {}
             HabitType.Session -> {
                 if(state.countTarget == null || state.countTarget < 1){
                     sendEvent("Target should be greater than 0")
@@ -419,6 +421,10 @@ class AddViewModel @Inject constructor(
                 lastEmitted =""
             }
         }
+    }
+
+    fun setReady(){
+        _habitUiState.value = _habitUiState.value.copy(isReady = true)
     }
 
     fun clearHabitUI(){

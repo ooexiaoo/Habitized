@@ -53,6 +53,7 @@ fun TimerElement(
     manager : TimerServiceManager,
     start : Boolean = false,
     finished : Boolean = false,
+    isStopwatch : Boolean = false,
     onPrimary : Color,
     onStart : (Int)->Unit = {},
     onPause : () ->Unit= {},
@@ -186,14 +187,16 @@ fun TimerElement(
 
         }
         //progress
-        Spacer(Modifier.height(24.dp))
-        TimerProgressBar(
-            progress = count,
-            total = secondTimes,
-            progressColor = onPrimary,
-            modifier = Modifier.padding(horizontal = 40.dp)
-        )
-        Spacer(Modifier.height(24.dp))
+        if (!isStopwatch) {
+            Spacer(Modifier.height(24.dp))
+            TimerProgressBar(
+                progress = count,
+                total = secondTimes,
+                progressColor = onPrimary,
+                modifier = Modifier.padding(horizontal = 40.dp)
+            )
+            Spacer(Modifier.height(24.dp))
+        }
         //pause retry
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),

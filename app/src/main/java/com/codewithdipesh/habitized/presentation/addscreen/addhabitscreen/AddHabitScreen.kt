@@ -122,6 +122,7 @@ fun AddHabitScreen(
         if(id != null){
             viewmodel.init(id)
         }
+        viewmodel.setReady()
     }
     //check if alarm permission is granted or not
     LaunchedEffect(state.isShowReminderTime){
@@ -399,7 +400,7 @@ fun AddHabitScreen(
 
                         //input of targets
                         //choose param
-                        if(state.type != HabitType.OneTime && state.type != HabitType.Duration){
+                        if(state.type != HabitType.OneTime && state.type != HabitType.Duration && state.type != HabitType.Stopwatch){
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Start,
@@ -476,79 +477,81 @@ fun AddHabitScreen(
                                     modifier = Modifier.padding(horizontal = 8.dp).fillMaxWidth()
                                 )
                             }
-                            Row(modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentHeight(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ){
-                                //hour
-                                TimePicker(
-                                    width = 80.dp,
-                                    itemHeight = 24.dp,
-                                    numberOfDisplayItems = 3,
-                                    items = (0..12).toList(),
-                                    initialItem = state.selectedHour,
-                                    itemScaleFont = 1.5f,
-                                    fontSize = 16,
-                                    textFont = regular,
-                                    textWeight = FontWeight.Normal,
-                                    selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                                    nonSelectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f),
-                                    onItemSelected = {item->
-                                        viewmodel.setHours(item)
-                                    }
-                                )
-                                Text(
-                                    text = ":",
-                                    style = TextStyle(
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        fontFamily = regular,
-                                        fontSize = 16.sp
+                            if (state.isReady) {
+                                Row(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .wrapContentHeight(),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ){
+                                    //hour
+                                    TimePicker(
+                                        width = 80.dp,
+                                        itemHeight = 24.dp,
+                                        numberOfDisplayItems = 3,
+                                        items = (0..12).toList(),
+                                        initialItem = state.selectedHour,
+                                        itemScaleFont = 1.5f,
+                                        fontSize = 16,
+                                        textFont = regular,
+                                        textWeight = FontWeight.Normal,
+                                        selectedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                        nonSelectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f),
+                                        onItemSelected = {item->
+                                            viewmodel.setHours(item)
+                                        }
                                     )
-                                )
-                                //minutes
-                                TimePicker(
-                                    width = 80.dp,
-                                    itemHeight = 24.dp,
-                                    numberOfDisplayItems = 3,
-                                    items = (0..59).toList(),
-                                    initialItem = state.selectedMinute,
-                                    itemScaleFont = 1.5f,
-                                    fontSize = 16,
-                                    textFont = regular,
-                                    textWeight = FontWeight.Normal,
-                                    selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                                    nonSelectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f),
-                                    onItemSelected = {item->
-                                        viewmodel.setMinutes(item)
-                                    }
-                                )
-                                Text(
-                                    text = ":",
-                                    style = TextStyle(
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        fontFamily = regular,
-                                        fontSize = 16.sp
+                                    Text(
+                                        text = ":",
+                                        style = TextStyle(
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            fontFamily = regular,
+                                            fontSize = 16.sp
+                                        )
                                     )
-                                )
-                                //seconds
-                                TimePicker(
-                                    width = 80.dp,
-                                    itemHeight = 24.dp,
-                                    numberOfDisplayItems = 3,
-                                    items = (0..59).toList(),
-                                    initialItem = state.selectedSeconds,
-                                    itemScaleFont = 1.5f,
-                                    fontSize = 16,
-                                    textFont = regular,
-                                    textWeight = FontWeight.Normal,
-                                    selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                                    nonSelectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f),
-                                    onItemSelected = {item->
-                                        viewmodel.setSeconds(item)
-                                    }
-                                )
+                                    //minutes
+                                    TimePicker(
+                                        width = 80.dp,
+                                        itemHeight = 24.dp,
+                                        numberOfDisplayItems = 3,
+                                        items = (0..59).toList(),
+                                        initialItem = state.selectedMinute,
+                                        itemScaleFont = 1.5f,
+                                        fontSize = 16,
+                                        textFont = regular,
+                                        textWeight = FontWeight.Normal,
+                                        selectedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                        nonSelectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f),
+                                        onItemSelected = {item->
+                                            viewmodel.setMinutes(item)
+                                        }
+                                    )
+                                    Text(
+                                        text = ":",
+                                        style = TextStyle(
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            fontFamily = regular,
+                                            fontSize = 16.sp
+                                        )
+                                    )
+                                    //seconds
+                                    TimePicker(
+                                        width = 80.dp,
+                                        itemHeight = 24.dp,
+                                        numberOfDisplayItems = 3,
+                                        items = (0..59).toList(),
+                                        initialItem = state.selectedSeconds,
+                                        itemScaleFont = 1.5f,
+                                        fontSize = 16,
+                                        textFont = regular,
+                                        textWeight = FontWeight.Normal,
+                                        selectedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                        nonSelectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f),
+                                        onItemSelected = {item->
+                                            viewmodel.setSeconds(item)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

@@ -5,5 +5,6 @@ data class TimerClassState(
     val minute: Int,
     val second: Int,
     val isPaused : Boolean,
-    val isFinished: Boolean
+    val isFinished: Boolean,
+    val isStopwatch: Boolean = false
 )
