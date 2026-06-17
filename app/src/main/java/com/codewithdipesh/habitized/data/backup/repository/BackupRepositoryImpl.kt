@@ -18,6 +18,14 @@ class BackupRepositoryImpl @Inject constructor(
         return backupManager.createBackup(backupType)
     }
 
+    override suspend fun prepareBackup(backupType: String): BackupResult {
+        return backupManager.prepareBackupJson(backupType)
+    }
+
+    override suspend fun saveToUri(uri: Uri, content: String): BackupResult {
+        return backupManager.saveToUri(uri, content)
+    }
+
     override suspend fun restoreBackup(uri: Uri): BackupResult {
         return backupManager.restoreBackup(uri)
     }

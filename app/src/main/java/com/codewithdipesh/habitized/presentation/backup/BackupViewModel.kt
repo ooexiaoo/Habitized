@@ -28,7 +28,9 @@ data class BackupUiState(
     val showRestoreDialog: Boolean = false,
     val selectedBackupForRestore: BackupFileInfo? = null,
     val backupSummary: Map<String, Int>? = null,
-    val isRestoring: Boolean = false
+    val isRestoring: Boolean = false,
+    val pendingBackupJson: String? = null,
+    val pendingBackupFileName: String? = null
 )
 
 @HiltViewModel
@@ -67,13 +69,13 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            when (val result = backupRepository.createBackup("manual")) {
+            when (val result = backupRepository.prepareBackup("manual")) {
                 is BackupResult.Success -> {
-                    loadBackupInfo()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            message = "Backup created successfully"
+                            pendingBackupJson = result.jsonContent,
+                            pendingBackupFileName = result.fileName
                         )
                     }
                 }
@@ -83,6 +85,31 @@ class BackupViewModel @Inject constructor(
                             isLoading = false,
                             message = result.message
                         )
+                    }
+                }
+            }
+        }
+    }
+
+    fun saveBackupToUri(uri: Uri) {
+        viewModelScope.launch {
+            val json = _uiState.value.pendingBackupJson ?: return@launch
+            _uiState.update { it.copy(pendingBackupJson = null, pendingBackupFileName = null) }
+
+            when (val result = backupRepository.saveToUri(uri, json)) {
+                is BackupResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            message = "Backup saved successfully",
+                            lastBackupDate = formatBackupDate(
+                                java.time.LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                            )
+                        )
+                    }
+                }
+                is BackupResult.Error -> {
+                    _uiState.update {
+                        it.copy(message = result.message)
                     }
                 }
             }

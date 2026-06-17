@@ -2,6 +2,9 @@
     <files-path
         name="habit_images"
         path="habit_image/" />
+    <files-path
+        name="backups"
+        path="backups/" />
     <cache-path
         name="shared_images"
         path="shared_images"/>

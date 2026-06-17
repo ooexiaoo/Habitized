@@ -74,6 +74,18 @@ fun BackupScreen(
         uri?.let { viewModel.restoreFromUri(it) }
     }
 
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { viewModel.saveBackupToUri(it) }
+    }
+
+    LaunchedEffect(uiState.pendingBackupFileName) {
+        uiState.pendingBackupFileName?.let { fileName ->
+            createDocumentLauncher.launch(fileName)
+        }
+    }
+
     LaunchedEffect(uiState.message) {
         uiState.message?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()

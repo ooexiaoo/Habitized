@@ -34,7 +34,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed class BackupResult {
-    data class Success(val message: String, val fileName: String? = null) : BackupResult()
+    data class Success(val message: String, val fileName: String? = null, val jsonContent: String? = null) : BackupResult()
     data class Error(val message: String) : BackupResult()
 }
 
@@ -61,8 +61,24 @@ class BackupManager @Inject constructor(
     }
 
     suspend fun createBackup(backupType: String = "manual"): BackupResult = withContext(Dispatchers.IO) {
+        when (val result = prepareBackupJson(backupType)) {
+            is BackupResult.Error -> result
+            is BackupResult.Success -> {
+                val fileName = result.fileName ?: return@withContext BackupResult.Error("Backup failed")
+                val jsonContent = result.jsonContent ?: return@withContext BackupResult.Error("Backup failed")
+                try {
+                    val file = File(backupDir, fileName)
+                    file.writeText(jsonContent)
+                    BackupResult.Success("Backup created successfully", fileName)
+                } catch (e: Exception) {
+                    BackupResult.Error("Failed to save backup file")
+                }
+            }
+        }
+    }
+
+    suspend fun prepareBackupJson(backupType: String = "manual"): BackupResult = withContext(Dispatchers.IO) {
         try {
-            // Collect all data from database
             val habits = habitDao.getAllHabits().map { HabitBackup.fromEntity(it) }
             val habitProgress = habitProgressDao.getAllProgress().map { HabitProgressBackup.fromEntity(it) }
             val goals = goalDao.getAllGoals().map { GoalBackup.fromEntity(it) }
@@ -70,10 +86,8 @@ class BackupManager @Inject constructor(
             val imageProgress = imageProgressDao.getAllImageProgress().map { ImageProgressBackup.fromEntity(it) }
             val oneTimeTasks = oneTimeTaskDao.getAllTasks().map { OneTimeTaskBackup.fromEntity(it) }
 
-            // Collect images
             val images = imageBackupManager.encodeAllImages(imageProgress)
 
-            // Create metadata
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val versionName = packageInfo.versionName ?: "unknown"
@@ -93,14 +107,12 @@ class BackupManager @Inject constructor(
                 androidVersion = Build.VERSION.SDK_INT
             )
 
-            // Create preferences
             val preferences = BackupPreferences(
                 theme = habitPreference.getTheme(),
                 introShown = !habitPreference.isOnboardingRequired(),
                 autoBackupEnabled = habitPreference.isAutoBackupEnabled()
             )
 
-            // Create backup data
             val backupData = BackupData(
                 metadata = metadata,
                 habits = habits,
@@ -113,22 +125,24 @@ class BackupManager @Inject constructor(
                 images = images
             )
 
-            // Convert to JSON
             val jsonContent = gson.toJson(backupData)
-
-            // Save to Downloads folder
             val fileName = generateFileName()
-            val result = saveToDownloads(fileName, jsonContent)
 
-            if (result) {
-                // Update last backup date
-                habitPreference.updateLastBackupDate(timestamp)
-                BackupResult.Success("Backup created successfully", fileName)
-            } else {
-                BackupResult.Error("Failed to save backup file")
-            }
+            habitPreference.updateLastBackupDate(timestamp)
+            BackupResult.Success("Backup prepared", fileName, jsonContent)
         } catch (e: Exception) {
             BackupResult.Error("Backup failed: ${e.message}")
+        }
+    }
+
+    suspend fun saveToUri(uri: Uri, content: String): BackupResult = withContext(Dispatchers.IO) {
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(content.toByteArray())
+            } ?: return@withContext BackupResult.Error("Could not open file")
+            BackupResult.Success("Backup saved successfully")
+        } catch (e: Exception) {
+            BackupResult.Error("Failed to save: ${e.message}")
         }
     }
 
